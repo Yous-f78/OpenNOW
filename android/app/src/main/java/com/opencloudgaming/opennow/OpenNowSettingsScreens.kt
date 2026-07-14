@@ -602,7 +602,7 @@ private fun SettingsContent(
                     viewModel.updateStreamSettings { s -> s.copy(enableCloudGsync = it) }
                 }
             }
-    CategorySettingsSection(selectedCategory, SettingsCategory.Input, searchQuery, "Input", "input", "mouse", "sensitivity", "acceleration", "keyboard", "layout", "language", "clipboard", "paste", "rumble", "touch", "finger", "opacity", "edge", "padding", "offset", "controls", "stick", "button") {
+    CategorySettingsSection(selectedCategory, SettingsCategory.Input, searchQuery, "Input", "input", "mouse", "sensitivity", "acceleration", "keyboard", "layout", "language", "clipboard", "paste", "rumble", "touch", "finger", "opacity", "edge", "padding", "offset", "controls", "stick", "button", "mobile", "camera", "joystick", "floating", "invert", "look") {
                 NumberSlider("Mouse sensitivity", settings.stream.mouseSensitivity, 0.25f, 3f, 0.05f) {
                     viewModel.updateStreamSettings { s -> s.copy(mouseSensitivity = it) }
                 }
@@ -629,6 +629,10 @@ private fun SettingsContent(
                 NumberSlider("Left controls vertical offset", settings.androidTouch.leftOffsetYDp, -160f, 160f, 2f) { value -> viewModel.updateSettings(settings.copy(androidTouch = settings.androidTouch.copy(leftOffsetYDp = value))) }
                 NumberSlider("Right controls horizontal offset", settings.androidTouch.rightOffsetXDp, -220f, 220f, 2f) { value -> viewModel.updateSettings(settings.copy(androidTouch = settings.androidTouch.copy(rightOffsetXDp = value))) }
                 NumberSlider("Right controls vertical offset", settings.androidTouch.rightOffsetYDp, -160f, 160f, 2f) { value -> viewModel.updateSettings(settings.copy(androidTouch = settings.androidTouch.copy(rightOffsetYDp = value))) }
+                SettingSwitch("Mobile layout (left stick + right buttons + camera zone)", settings.androidTouch.mobileLayout) { enabled -> viewModel.updateSettings(settings.copy(androidTouch = settings.androidTouch.copy(mobileLayout = enabled))) }
+                SettingSwitch("Floating joystick (appears at touch point)", settings.androidTouch.floatingJoystick) { enabled -> viewModel.updateSettings(settings.copy(androidTouch = settings.androidTouch.copy(floatingJoystick = enabled))) }
+                NumberSlider("Camera sensitivity", settings.androidTouch.cameraSensitivity, 0.1f, 3f, 0.05f) { value -> viewModel.updateSettings(settings.copy(androidTouch = settings.androidTouch.copy(cameraSensitivity = value))) }
+                SettingSwitch("Invert camera Y axis", settings.androidTouch.cameraInvertY) { enabled -> viewModel.updateSettings(settings.copy(androidTouch = settings.androidTouch.copy(cameraInvertY = enabled))) }
             }
     CategorySettingsSection(selectedCategory, SettingsCategory.Interface, searchQuery, stringResource(R.string.settings_section_interface), "interface", "ui", "system colors", "accent", "launch page", "default page", "store", "library", "nerd", "expressive", "compact", "cards", "store labels", "game card size", "stats", "position", "server selector", "controller", "sounds", "button", "tone", "tv", "safe area", "screen padding", "overscan", "session counter", "intro", "music", "queue", "stretch", "fill") {
                 val accentOptions = UiAccent.entries.map { it to uiAccentLabel(it) }
