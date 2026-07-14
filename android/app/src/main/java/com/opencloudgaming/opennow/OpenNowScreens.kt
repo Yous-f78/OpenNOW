@@ -4945,6 +4945,32 @@ private fun StreamScreen(state: OpenNowUiState, viewModel: OpenNowViewModel) {
     }
     var resolutionMismatchStats by remember(session?.sessionId, launchStreamSettings.resolution, launchStreamSettings.aspectRatio) { mutableStateOf(0) }
     var resolutionMismatchRestartRequested by remember(session?.sessionId, launchStreamSettings.resolution, launchStreamSettings.aspectRatio) { mutableStateOf(false) }
+
+    // Per-game touch profile: load when game changes, save previous on exit
+    val touchProfileManager = remember { TouchProfileManager.get(context) }
+    var loadedProfileGameId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(game?.id) {
+        val gameId = game?.id
+        if (gameId != null && gameId != loadedProfileGameId) {
+            // Save the previous game's profile if any
+            loadedProfileGameId?.let { prevGameId ->
+                touchProfileManager.saveProfile(prevGameId, state.settings.androidTouch)
+            }
+            // Load the new game's profile (or keep current if none exists)
+            touchProfileManager.loadProfile(gameId)?.let { profile ->
+                viewModel.updateSettings(state.settings.copy(androidTouch = profile))
+            }
+            loadedProfileGameId = gameId
+        }
+    }
+    // Save the current profile when the stream screen is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            loadedProfileGameId?.let { gameId ->
+                touchProfileManager.saveProfile(gameId, state.settings.androidTouch)
+            }
+        }
+    }
     val dismissStreamGuide = {
         streamGuideOpen = false
         if (!state.settings.androidStreamGuideDismissed) {
