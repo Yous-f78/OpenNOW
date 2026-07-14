@@ -8350,7 +8350,22 @@ private fun TouchOverlay(
                 onLocalOffsetChange(key + suffix, x, y)
             }
 
-            if (landscape) {
+            if (touch.mobileLayout && landscape) {
+                MobileLandscapeTouchControls(
+                    client = client,
+                    opacity = opacity,
+                    layoutScale = layoutScale,
+                    buttonScale = buttonScale,
+                    stickScale = stickScale,
+                    cameraSensitivity = touch.cameraSensitivity,
+                    cameraInvertY = touch.cameraInvertY,
+                    floatingJoystick = touch.floatingJoystick,
+                    layoutEditing = layoutEditing,
+                    getLocalOffset = getOrientationLocalOffset,
+                    onLocalOffsetChange = onOrientationLocalOffsetChange,
+                    onButtonTone = onButtonTone,
+                )
+            } else if (landscape) {
                 LandscapeTouchControls(
                     client = client,
                     opacity = opacity,
@@ -8767,7 +8782,7 @@ internal fun landscapeTouchTopControlClearanceDp(viewportHeightDp: Float, contro
 }
 
 @Composable
-private fun TouchControlGroup(
+internal fun TouchControlGroup(
     id: String,
     layoutEditing: Boolean,
     offsetX: Dp,
@@ -8881,7 +8896,7 @@ private fun StickWithThumbButton(
 }
 
 @Composable
-private fun VirtualStick(
+internal fun VirtualStick(
     label: String,
     client: NativeStreamClient,
     opacity: Float,

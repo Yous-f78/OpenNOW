@@ -3,12 +3,7 @@ package com.opencloudgaming.opennow
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -17,12 +12,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,20 +23,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.awaitPointerEventScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 // =====================================================================
@@ -352,3 +339,242 @@ fun MobileTriggerButton(
         }
     }
 }
+
+// =====================================================================
+// Mobile Landscape Layout
+//
+// Inspired by PUBG Mobile / Call of Duty Mobile / Fortnite Mobile:
+// - Left thumb: floating joystick (movement) — appears at touch point
+// - Right thumb: face buttons + trigger (aim/shoot/skills)
+// - Rest of screen: camera look zone (drag to look, tap to click)
+// - Index-finger reach: LB/RB bumpers at top
+// =====================================================================
+
+@Composable
+fun MobileLandscapeTouchControls(
+    client: NativeStreamClient,
+    opacity: Float,
+    layoutScale: Float,
+    buttonScale: Float,
+    stickScale: Float,
+    cameraSensitivity: Float,
+    cameraInvertY: Boolean,
+    floatingJoystick: Boolean,
+    layoutEditing: Boolean,
+    getLocalOffset: (String) -> TouchOffset,
+    onLocalOffsetChange: (String, Float, Float) -> Unit,
+    onButtonTone: () -> Unit,
+) {
+    val stickDiameter = 120.dp * stickScale * layoutScale
+    val bigButtonSize = 58.dp * buttonScale * layoutScale
+    val smallButtonSize = 46.dp * buttonScale * layoutScale
+    val triggerSize = 50.dp * buttonScale * layoutScale
+
+    Box(Modifier.fillMaxSize()) {
+        // Layer 1 (bottom): Camera look zone — captures drags on empty space.
+        // Buttons and stick render on top and consume their own touches first,
+        // so the camera zone only receives events that miss those controls.
+        CameraLookZone(
+            client = client,
+            sensitivity = cameraSensitivity,
+            invertY = cameraInvertY,
+            zoneHeightFraction = 1.0f,
+            enabled = !layoutEditing,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // Layer 2 (top): Controls — only visible/active areas consume touches.
+        // Left side: floating joystick for movement.
+        if (floatingJoystick && !layoutEditing) {
+            // Floating stick occupies the left ~45% of screen; joystick appears
+            // wherever the thumb first touches within that region.
+            Box(
+                Modifier
+                    .fillMaxSize(0.45f)
+                    .align(Alignment.CenterStart)
+            ) {
+                FloatingVirtualStick(
+                    client = client,
+                    opacity = opacity,
+                    diameter = stickDiameter,
+                    enabled = true,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        } else {
+            // Fixed stick (for edit mode or when floating disabled)
+            TouchControlGroup(
+                id = "mobile-lstick",
+                layoutEditing = layoutEditing,
+                offsetX = getLocalOffset("lstick").x.dp,
+                offsetY = getLocalOffset("lstick").y.dp,
+                onOffsetChange = { x, y -> onLocalOffsetChange("lstick", x, y) },
+                modifier = Modifier.align(Alignment.BottomStart).padding(
+                    start = 16.dp,
+                    bottom = 20.dp,
+                ),
+            ) {
+                VirtualStick(
+                    label = "L",
+                    client = client,
+                    opacity = opacity,
+                    diameter = stickDiameter,
+                    onChange = client::setVirtualLeftStick,
+                )
+            }
+        }
+
+        // Right side: face buttons (A/B/X/Y) — bottom-right cluster
+        TouchControlGroup(
+            id = "mobile-face",
+            layoutEditing = layoutEditing,
+            offsetX = getLocalOffset("face").x.dp,
+            offsetY = getLocalOffset("face").y.dp,
+            onOffsetChange = { x, y -> onLocalOffsetChange("face", x, y) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(
+                end = 16.dp,
+                bottom = 20.dp,
+            ),
+        ) {
+            MobileFaceButtonCluster(
+                client = client,
+                opacity = opacity,
+                scale = buttonScale * layoutScale,
+                onButtonTone = onButtonTone,
+            )
+        }
+
+        // Right trigger (RT) — for shooting, placed above face buttons
+        TouchControlGroup(
+            id = "mobile-rt",
+            layoutEditing = layoutEditing,
+            offsetX = getLocalOffset("rt").x.dp,
+            offsetY = getLocalOffset("rt").y.dp,
+            onOffsetChange = { x, y -> onLocalOffsetChange("rt", x, y) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(
+                end = 16.dp + bigButtonSize * 2.3f,
+                bottom = 20.dp + bigButtonSize * 1.4f,
+            ),
+        ) {
+            MobileTriggerButton(
+                label = "RT",
+                left = false,
+                client = client,
+                opacity = opacity,
+                size = triggerSize,
+                onPressTone = onButtonTone,
+            )
+        }
+
+        // Left trigger (LT) — for aiming down sights, placed above-left
+        TouchControlGroup(
+            id = "mobile-lt",
+            layoutEditing = layoutEditing,
+            offsetX = getLocalOffset("lt").x.dp,
+            offsetY = getLocalOffset("lt").y.dp,
+            onOffsetChange = { x, y -> onLocalOffsetChange("lt", x, y) },
+            modifier = Modifier.align(Alignment.BottomStart).padding(
+                start = 16.dp + stickDiameter * 0.9f,
+                bottom = 20.dp + stickDiameter * 0.5f,
+            ),
+        ) {
+            MobileTriggerButton(
+                label = "LT",
+                left = true,
+                client = client,
+                opacity = opacity,
+                size = triggerSize,
+                onPressTone = onButtonTone,
+            )
+        }
+
+        // Right bumper (RB) — top-right, for index finger (reload/special)
+        TouchControlGroup(
+            id = "mobile-rb",
+            layoutEditing = layoutEditing,
+            offsetX = getLocalOffset("rb").x.dp,
+            offsetY = getLocalOffset("rb").y.dp,
+            onOffsetChange = { x, y -> onLocalOffsetChange("rb", x, y) },
+            modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 10.dp),
+        ) {
+            MobileActionButton(
+                label = "RB",
+                mask = GamepadButtonMapping.RIGHT_SHOULDER,
+                client = client,
+                opacity = opacity,
+                size = smallButtonSize,
+                onPressTone = onButtonTone,
+            )
+        }
+
+        // Left bumper (LB) — top-left, for index finger
+        TouchControlGroup(
+            id = "mobile-lb",
+            layoutEditing = layoutEditing,
+            offsetX = getLocalOffset("lb").x.dp,
+            offsetY = getLocalOffset("lb").y.dp,
+            onOffsetChange = { x, y -> onLocalOffsetChange("lb", x, y) },
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 10.dp),
+        ) {
+            MobileActionButton(
+                label = "LB",
+                mask = GamepadButtonMapping.LEFT_SHOULDER,
+                client = client,
+                opacity = opacity,
+                size = smallButtonSize,
+                onPressTone = onButtonTone,
+            )
+        }
+
+        // Start / Back — small, top center
+        TouchControlGroup(
+            id = "mobile-start",
+            layoutEditing = layoutEditing,
+            offsetX = getLocalOffset("start").x.dp,
+            offsetY = getLocalOffset("start").y.dp,
+            onOffsetChange = { x, y -> onLocalOffsetChange("start", x, y) },
+            modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp + smallButtonSize + 8.dp, top = 10.dp),
+        ) {
+            MobileActionButton(
+                label = "☰",
+                mask = GamepadButtonMapping.START,
+                client = client,
+                opacity = opacity,
+                size = smallButtonSize,
+                onPressTone = onButtonTone,
+            )
+        }
+    }
+}
+
+/**
+ * Diamond-layout face button cluster (A/B/X/Y) for the mobile layout.
+ * Slightly tighter spacing than the full Xbox layout since it's meant
+ * for right-thumb reach on a phone screen.
+ */
+@Composable
+private fun MobileFaceButtonCluster(
+    client: NativeStreamClient,
+    opacity: Float,
+    scale: Float,
+    onButtonTone: () -> Unit,
+) {
+    val buttonSize = 56.dp * scale
+    val distance = buttonSize * 0.95f
+    val boxSize = distance * 2 + buttonSize
+    Box(Modifier.size(boxSize)) {
+        Box(Modifier.align(Alignment.Center).offset(y = -distance)) {
+            MobileActionButton("Y", GamepadButtonMapping.Y, client, opacity, buttonSize, onButtonTone)
+        }
+        Box(Modifier.align(Alignment.Center).offset(y = distance)) {
+            MobileActionButton("A", GamepadButtonMapping.A, client, opacity, buttonSize, onButtonTone)
+        }
+        Box(Modifier.align(Alignment.Center).offset(x = -distance)) {
+            MobileActionButton("X", GamepadButtonMapping.X, client, opacity, buttonSize, onButtonTone)
+        }
+        Box(Modifier.align(Alignment.Center).offset(x = distance)) {
+            MobileActionButton("B", GamepadButtonMapping.B, client, opacity, buttonSize, onButtonTone)
+        }
+    }
+}
+
