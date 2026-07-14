@@ -5448,6 +5448,15 @@ private fun StreamScreen(state: OpenNowUiState, viewModel: OpenNowViewModel) {
                             )
                         )
                     },
+                    onMobileLayoutToggle = {
+                        viewModel.updateSettings(
+                            state.settings.copy(
+                                androidTouch = state.settings.androidTouch.copy(
+                                    mobileLayout = !state.settings.androidTouch.mobileLayout
+                                )
+                            )
+                        )
+                    },
                     onButtonTone = playButtonTone,
                     highlightDone = streamGuideOpen && streamGuideStep == StreamGuideStep.PressDone,
                     onClose = {
@@ -6413,6 +6422,7 @@ private fun StreamControlsPanel(
     onTouchLeftOffsetChange: (Float) -> Unit,
     onTouchRightOffsetChange: (Float) -> Unit,
     onTouchLayoutReset: () -> Unit,
+    onMobileLayoutToggle: () -> Unit,
     onButtonTone: () -> Unit,
     highlightDone: Boolean = false,
     onClose: () -> Unit,
@@ -6598,6 +6608,10 @@ private fun StreamControlsPanel(
             }
             item {
                 StreamPanelSection("Touch Layout") {
+                    StreamControlSwitch("Mobile layout", if (settings.androidTouch.mobileLayout) "On" else "Off", settings.androidTouch.mobileLayout) {
+                        onButtonTone()
+                        onMobileLayoutToggle()
+                    }
                     StreamControlSwitch("Drag edit mode", if (touchLayoutEditing) "On" else "Off", touchLayoutEditing) {
                         onButtonTone()
                         onTouchLayoutEditingToggle()
