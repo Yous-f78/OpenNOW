@@ -194,6 +194,14 @@ data class AndroidTouchSettings(
     val rightOffsetXDp: Float = 0f,
     val rightOffsetYDp: Float = 0f,
     val offsets: Map<String, TouchOffset> = emptyMap(),
+    // Mobile-style touch controls (left stick + right buttons + camera look zone)
+    val mobileLayout: Boolean = false,
+    val floatingJoystick: Boolean = true,
+    val cameraSensitivity: Float = 1.0f,
+    val cameraInvertY: Boolean = false,
+    val cameraZoneHeight: Float = 1.0f,
+    // Per-game profile key (empty = global default)
+    val activeProfileGameId: String = "",
 ) {
     fun getOffset(key: String): TouchOffset = offsets[key] ?: TouchOffset()
 
