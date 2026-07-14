@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.awaitPointerEventScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
@@ -65,7 +64,6 @@ fun CameraLookZone(
 ) {
     if (!enabled) return
 
-    var activePointers by remember { mutableStateOf(mapOf<Int, Offset>()) }
     var lastTapTimeMs by remember { mutableFloatStateOf(0f) }
     var lastTapPos by remember { mutableStateOf(Offset.Zero) }
 
@@ -101,7 +99,6 @@ fun CameraLookZone(
                                 }
                                 change.pressed && !change.previousPressed -> {
                                     // Pointer down — track for tap detection
-                                    activePointers = activePointers + (change.id.value to change.position)
                                     lastTapTimeMs = System.nanoTime() / 1_000_000f
                                     lastTapPos = change.position
                                     change.consume()
@@ -118,7 +115,6 @@ fun CameraLookZone(
                                         // Quick tap = left mouse click
                                         client.sendTouchMouseClick(delayBeforeDownMs = 0L)
                                     }
-                                    activePointers = activePointers - change.id.value
                                     change.consume()
                                 }
                             }
